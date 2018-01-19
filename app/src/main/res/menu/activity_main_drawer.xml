@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_beranda"
+            android:icon="@drawable/ic_home_black_24dp"
+            android:title="Beranda" />
+        <item
+            android:id="@+id/nav_woman"
+            android:icon="@drawable/ic_pregnant_woman_black_24dp"
+            android:title="Pakaian Wanita" />
+        <item
+            android:id="@+id/nav_men"
+            android:icon="@drawable/ic_men"
+            android:title="Pakaian Pria" />
+        <item
+            android:id="@+id/nav_child"
+            android:icon="@drawable/ic_child_care_black_24dp"
+            android:title="Pakaian Anak Anak" />
+    </group>
+
+    <item android:title="">
+        <menu>
+            <item
+                android:id="@+id/nav_login"
+
+                android:title="Login" />
+            <item
+                android:id="@+id/nav_register"
+
+                android:title="Register" />
+
+            <item
+                android:id="@+id/nav_about"
+
+                android:title="Tentang Kami" />
+            <item
+                android:id="@+id/nav_exit"
+
+                android:title="Exit" />
+        </menu>
+    </item>
+
+</menu>
