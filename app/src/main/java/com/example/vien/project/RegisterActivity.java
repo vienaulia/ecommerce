@@ -21,6 +21,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
+import android.text.format.Time;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -33,6 +34,9 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.vien.project.Response.Register;
+import com.example.vien.project.Service.Authentication;
+import com.example.vien.project.config.Config;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -46,6 +50,15 @@ import com.google.firebase.auth.FirebaseUser;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 import static android.Manifest.permission.READ_CONTACTS;
 
@@ -100,13 +113,13 @@ public class RegisterActivity extends AppCompatActivity {
         btnregis.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-                doRegister();
+                doRegister(etEmail.getText().toString(),etPassword.getText().toString(),etNama.getText().toString(), true);
 
             }
         });
 
         GoogleSignInOptions gso =new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken("551116281068-katf9t4f6gl54jcdlaji1b2u8os3cval.apps.googleusercontent.com")
+                .requestIdToken(Config.FIREBASE_KEY)
                 .requestEmail()
                 .build();
         googleSignInClient = GoogleSignIn.getClient(this,gso);
@@ -140,7 +153,8 @@ public class RegisterActivity extends AppCompatActivity {
             try {
 
                 GoogleSignInAccount account = task.getResult(ApiException.class);
-                Toast.makeText(RegisterActivity.this, "Register berhasil", Toast.LENGTH_LONG).show();
+           //     Toast.makeText(RegisterActivity.this, "Register berhasil", Toast.LENGTH_LONG).show();
+                doRegister(account.getEmail(),"asdfasdf", account.getDisplayName(),false);
             }
             catch (ApiException e){
 
@@ -151,39 +165,93 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
 
-    private void doRegister() {
+    private void doRegister(String email, String password, String nama, boolean useValidation) {
 
-        Boolean validation = validation();
+        Boolean validation = useValidation? validation():true;
+
+
+
         if (!validation) {
             Toast.makeText(this,"Inputan Tidak sesuai",Toast.LENGTH_LONG).show();
 
         } else {
             progressDialog.show();
 
-            mAuth.createUserWithEmailAndPassword(etEmail.getText().toString(), etPassword.getText().toString())
+            mAuth.createUserWithEmailAndPassword(email,password)
                     .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
 
-                            progressDialog.dismiss();
+
 
                             if (task.isSuccessful()) {
                                 // Sign in success, update UI with the signed-in user's information
                                 Log.d("Firebase Message", "createUserWithEmail:success");
                                 FirebaseUser user = mAuth.getCurrentUser();
-                               Toast.makeText(RegisterActivity.this,"Authentification success",Toast.LENGTH_SHORT).show();
+                            //   Toast.makeText(RegisterActivity.this,"Authentification success",Toast.LENGTH_SHORT).show();
+                                doRegisterServerApp(user.getDisplayName(),user.getEmail(),user.getUid());
                             } else {
                                 // If sign in fails, display a message to the user.
                                 Log.w("Firebase Message", "createUserWithEmail:failure", task.getException());
                                 Toast.makeText(RegisterActivity.this, "Authentication failed.",
                                         Toast.LENGTH_SHORT).show();
-
+                                progressDialog.dismiss();
                             }
 
                             // ...
                         }
                     });
         }
+    }
+
+
+    //Register ke server aplikasi bukan firebase
+    private void doRegisterServerApp(String nama, String email, String guid){
+        HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
+        interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(10000, TimeUnit.MILLISECONDS)
+                .readTimeout(10000, TimeUnit.MILLISECONDS)
+                .writeTimeout(10000, TimeUnit.MILLISECONDS)
+                .addInterceptor(interceptor)
+                .build();
+
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(Config.BASE_URL_APP)
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+//untuk memastikan siap jalan
+        Authentication service = retrofit.create(Authentication.class);
+        Call<Register> registerCall = service.doRegister(
+                Config.APP_KEY,email,nama,
+                etTelepone.getText().toString(),
+                etPassword.getText().toString(), guid
+
+        );
+
+//untuk eksekusi nya
+
+        registerCall.enqueue(new Callback<Register>() {
+            @Override
+            public void onResponse(Call<Register> call, Response<Register> response) {progressDialog.dismiss();
+                Register registerResponse = response.body();
+               Toast.makeText(RegisterActivity.this, registerResponse.getMsg(),Toast.LENGTH_LONG).show();
+               Intent intent = new Intent(RegisterActivity.this,LoginActivity.class);
+            startActivity(intent);
+            RegisterActivity.this.finish();
+
+            }
+
+            @Override
+            public void onFailure(Call<Register> call, Throwable t) {
+            Toast.makeText(RegisterActivity.this, "Terjadi kesalahan, silahkan coba kembali", Toast.LENGTH_LONG).show();
+                progressDialog.dismiss();
+
+            }
+        });
     }
 
     private boolean validation() {
